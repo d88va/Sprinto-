@@ -7,6 +7,8 @@ export type Company = {
   stage: string;
   headcount_estimate: number | null;
   signals: Signal[];
+  score?: number; // set by the code verdict
+  reasons?: string[];
 };
 
 export type Contact = {

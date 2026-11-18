@@ -40,6 +40,7 @@ function ensureSchema(): Promise<void> {
       `create table if not exists poc_overrides(
          domain text primary key, first_name text, last_name text, position text, email text)`,
     ];
+    stmts.push(`create table if not exists settings(key text primary key, value jsonb not null)`);
     for (const t of stmts) await p.query(t);
   })().catch((e) => {
     ready = null; // allow retry after a transient failure

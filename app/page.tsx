@@ -1,141 +1,179 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { Badge, MiniProgress } from "@/components/bits";
+import { useStore } from "@/components/Store";
+import { ago, displayName, FINISHED, IN_PROGRESS, STATUS, type Prospect } from "@/lib/ui";
 
-type Ev = { ts: string; step: string; decision: string; reason: string };
-type Prospect = {
-  id: number; domain: string; status: string; outcome: string | null; why: string | null;
-  contact: { first_name: string; last_name: string; position: string; value: string } | null;
-  email: { subject: string; body: string; hook_quote: string; edited?: boolean } | null;
-  events: Ev[];
-};
+const MAX = 25;
 
-const IN_PROGRESS = ["queued", "qualifying", "finding_poc", "pains", "drafting"];
+function parse(text: string): string[] {
+  const seen = new Set<string>();
+  for (const t of text.split(/[\s,;]+/)) {
+    const d = t.trim().replace(/^https?:\/\//i, "").split("/")[0].replace(/^www\./i, "").toLowerCase();
+    if (d) seen.add(d);
+  }
+  return [...seen];
+}
 
 export default function Home() {
-  const [list, setList] = useState<Prospect[]>([]);
-  const [domains, setDomains] = useState("");
+  const { list, loaded, health, start } = useStore();
+  const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const working = useRef(new Set<number>());
+  const [filter, setFilter] = useState<"all" | "sent" | "nofit" | "attention">("all");
 
-  const refresh = useCallback(async () => {
-    const r = await fetch("/api/prospects");
-    if (r.ok) setList(await r.json());
-    else setError(`Could not load prospects (${r.status}). Is DATABASE_URL set?`);
-  }, []);
+  const domains = useMemo(() => parse(text), [text]);
+  const waiting = list.filter((p) => p.status === "awaiting_approval");
+  const working = list.filter((p) => IN_PROGRESS.includes(p.status));
+  const finished = list.filter((p) => FINISHED.includes(p.status));
+  const shown = finished.filter((p) =>
+    filter === "all" ? true
+    : filter === "sent" ? ["sent", "drafted"].includes(p.status)
+    : filter === "nofit" ? ["not_fit", "rejected"].includes(p.status)
+    : ["no_contact", "held", "skipped", "error"].includes(p.status));
 
-  // Drive each in-progress prospect forward, one short stage per request (keeps each function under the time limit).
-  const drive = useCallback(async (id: number) => {
-    if (working.current.has(id)) return;
-    working.current.add(id);
-    try {
-      for (let i = 0; i < 20; i++) {
-        const r = await fetch(`/api/prospects/${id}/advance`, { method: "POST" });
-        const { status } = await r.json();
-        await refresh();
-        if (!IN_PROGRESS.includes(status)) break;
-        if (status === "busy") await new Promise((res) => setTimeout(res, 3000));
-      }
-    } finally {
-      working.current.delete(id);
-    }
-  }, [refresh]);
-
-  useEffect(() => { refresh(); const t = setInterval(refresh, 4000); return () => clearInterval(t); }, [refresh]);
-
-  // Resume anything left mid-flight (e.g. after closing the tab).
-  useEffect(() => {
-    const ids = list.filter((p) => IN_PROGRESS.includes(p.status)).map((p) => p.id);
-    ids.slice(0, 2).forEach(drive);
-  }, [list, drive]);
-
-  async function start() {
+  async function run() {
     setBusy(true); setError("");
-    const lines = domains.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
-    const r = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: lines }) });
-    const j = await r.json();
-    if (!r.ok) setError(j.error ?? "failed");
-    else setDomains("");
-    await refresh();
+    const r = await start(domains);
+    if (r.ok) setText(""); else setError(r.error ?? "Something went wrong");
     setBusy(false);
   }
 
+  const todo: string[] = [];
+  if (health) {
+    if (!health.db) todo.push("Connect the database: add DATABASE_URL (your Neon connection string)");
+    if (!health.anthropic) todo.push("Add ANTHROPIC_API_KEY so the AI can read sites and write drafts");
+    if (!health.hunter) todo.push("Add HUNTER_API_KEY to find contacts automatically (or add contacts by hand when asked)");
+    if (!health.dry_run && !health.gmail) todo.push("Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to send, or set DRY_RUN=1 to preview only");
+    if (!health.send_to) todo.push("Add SEND_TO, the inbox that receives the emails (yours)");
+  }
+
   return (
-    <main>
-      <h1>Sprinto outreach</h1>
-      <p className="sub">Paste domains. The system researches, qualifies, finds the contact and drafts. You approve every send.</p>
-      <div className="card">
-        <textarea value={domains} onChange={(e) => setDomains(e.target.value)} placeholder={"acme.io\nexample.com"} />
-        <div className="row" style={{ marginTop: 8 }}>
-          <button className="primary" disabled={busy || !domains.trim()} onClick={start}>Run pipeline</button>
-          {error && <span className="err">{error}</span>}
-        </div>
+    <>
+      <p className="kicker">Growth Lead workspace</p>
+      <h1>Cold outreach, researched and drafted for you.</h1>
+      <p className="lede">
+        Add company domains. We read each site, decide if they fit Sprinto, find the right person, and write one specific email.
+        You approve every send.
+      </p>
+      <div className="how">
+        <div><b>1 · You</b>Paste domains below</div>
+        <div><b>2 · We</b>Research and draft, about a minute each</div>
+        <div><b>3 · You</b>Review and approve each email</div>
       </div>
-      {list.map((p) => <Card key={p.id} p={p} onChange={refresh} />)}
-      {!list.length && <p className="sub">No prospects yet.</p>}
-    </main>
+
+      {todo.length > 0 && (
+        <div className="banner" role="status">
+          <b>A few things to finish setting up</b>
+          Add these in your Vercel project under Settings → Environment Variables, then redeploy:
+          <ul>{todo.map((t) => <li key={t}>{t}</li>)}</ul>
+        </div>
+      )}
+
+      <section className="section" aria-labelledby="add">
+        <div className="card">
+          <label className="field" htmlFor="domains" style={{ marginBottom: 0 }}>
+            <span id="add">Company domains</span>
+            <textarea
+              id="domains" value={text} onChange={(e) => setText(e.target.value)} rows={4}
+              placeholder={"acme.io\nexample.com\nhttps://www.another-saas.com"}
+            />
+            <small>One per line or separated by commas. Pasting full web addresses is fine.</small>
+          </label>
+          <div className="actions">
+            <button className="btn btn-primary" onClick={run} disabled={busy || domains.length === 0 || domains.length > MAX}>
+              {busy ? "Starting…" : domains.length ? `Research ${domains.length} ${domains.length === 1 ? "company" : "companies"}` : "Research companies"}
+            </button>
+            {domains.length > MAX && <span className="msg err" style={{ margin: 0 }}>Please add {MAX} or fewer at a time.</span>}
+            {error && <span className="msg err" style={{ margin: 0 }}>{error}</span>}
+          </div>
+        </div>
+      </section>
+
+      {waiting.length > 0 && (
+        <section className="section" aria-labelledby="needs">
+          <div className="section-head">
+            <h2 id="needs">Needs your approval</h2>
+            <span className="count">{waiting.length} {waiting.length === 1 ? "email" : "emails"} ready</span>
+          </div>
+          {waiting.map((p) => <AskCard key={p.id} p={p} />)}
+        </section>
+      )}
+
+      {working.length > 0 && (
+        <section className="section" aria-labelledby="working">
+          <div className="section-head">
+            <h2 id="working">In progress</h2>
+            <span className="count">{working.length} running · you can leave this page, it keeps going</span>
+          </div>
+          <div className="rows">
+            {working.map((p) => (
+              <Link key={p.id} href={`/p/${p.id}`} className="row">
+                <div className="row-main">
+                  <div className="row-title">{displayName(p)} <Badge status={p.status} /></div>
+                  <div className="row-sub">{STATUS[p.status]?.doing}</div>
+                  <MiniProgress status={p.status} />
+                </div>
+                <span className="chev" aria-hidden>›</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="section" aria-labelledby="done">
+        <div className="section-head">
+          <h2 id="done">Finished</h2>
+          {finished.length > 0 && (
+            <div className="chips" role="group" aria-label="Filter finished companies">
+              {([["all", "All"], ["sent", "Approved"], ["nofit", "Not a fit"], ["attention", "Needs attention"]] as const).map(([k, l]) => (
+                <button key={k} className="chip" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        {!loaded ? (
+          <p className="muted">Loading…</p>
+        ) : list.length === 0 ? (
+          <div className="empty"><b>Nothing here yet</b>Paste a few company domains above to get started.</div>
+        ) : shown.length === 0 ? (
+          <p className="muted">Nothing in this view.</p>
+        ) : (
+          <div className="rows">
+            {shown.map((p) => (
+              <Link key={p.id} href={`/p/${p.id}`} className="row">
+                <div className="row-main">
+                  <div className="row-title">{displayName(p)} <Badge status={p.status} /></div>
+                  <div className="row-sub">{p.why ?? ""}</div>
+                </div>
+                <span className="tiny muted" style={{ whiteSpace: "nowrap" }}>{ago(p.updated_at)}</span>
+                <span className="chev" aria-hidden>›</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 
-function Card({ p, onChange }: { p: Prospect; onChange: () => void }) {
-  const [open, setOpen] = useState(p.status === "awaiting_approval");
-  const [subject, setSubject] = useState(p.email?.subject ?? "");
-  const [body, setBody] = useState(p.email?.body ?? "");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => { if (p.email) { setSubject(p.email.subject); setBody(p.email.body); } }, [p.email?.subject, p.email?.body]);
-  useEffect(() => { if (p.status === "awaiting_approval") setOpen(true); }, [p.status]);
-
-  async function act(kind: "approve" | "reject") {
-    setBusy(true); setErr("");
-    const r = await fetch(`/api/prospects/${p.id}/${kind}`, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify(kind === "approve" ? { subject, body } : {}),
-    });
-    if (!r.ok) setErr((await r.json()).error ?? "failed");
-    await onChange();
-    setBusy(false);
-  }
-
+function AskCard({ p }: { p: Prospect }) {
   return (
-    <div className="card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+    <Link href={`/p/${p.id}`} className="ask">
+      <div className="ask-top">
         <div>
-          <span className="domain">{p.domain}</span>{" "}
-          <span className={`badge s-${p.status}`}>{p.status.replace("_", " ")}</span>
-          {p.why && <div className="why">{p.why}</div>}
+          <div className="ask-co">{displayName(p)}</div>
+          {p.contact && <div className="ask-sub">To {p.contact.first_name} {p.contact.last_name}, {p.contact.position}</div>}
         </div>
-        <button onClick={() => setOpen(!open)}>{open ? "Hide" : "Why?"}</button>
+        <span className="ask-go">Review and decide →</span>
       </div>
-
-      {open && (
+      {p.email && (
         <>
-          <ul className="log">
-            {p.events.map((e, i) => (
-              <li key={i}><b>{e.step}</b> {e.decision} - {e.reason}</li>
-            ))}
-          </ul>
-          {p.contact && (
-            <p className="why">To (would-be recipient): {p.contact.first_name} {p.contact.last_name}, {p.contact.position} &lt;{p.contact.value}&gt;. Actual delivery goes to your own address.</p>
-          )}
+          <div className="ask-subject">{p.email.subject}</div>
+          <div className="ask-hook">Opens with: “{p.email.hook_quote}”</div>
         </>
       )}
-
-      {p.status === "awaiting_approval" && p.email && (
-        <div style={{ marginTop: 12 }}>
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          <textarea style={{ marginTop: 8, minHeight: 170 }} value={body} onChange={(e) => setBody(e.target.value)} />
-          <p className="why">Hook (verified on their site): “{p.email.hook_quote}”. Edits are re-checked against their site before sending.</p>
-          <div className="row">
-            <button className="go" disabled={busy} onClick={() => act("approve")}>Approve and send</button>
-            <button disabled={busy} onClick={() => act("reject")}>Reject</button>
-            {err && <span className="err">{err}</span>}
-          </div>
-        </div>
-      )}
-
-      {(p.status === "sent" || p.status === "drafted") && p.email && <div className="email" style={{ marginTop: 12 }}>{p.email.subject + "\n\n" + p.email.body}</div>}
-    </div>
+    </Link>
   );
 }

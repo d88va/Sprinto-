@@ -3,6 +3,8 @@ import { pickContact } from "../lib/hunter";
 import { claimCheck, groundExtraction, qualifyVerdict, signalsUsedBy } from "../lib/pipeline";
 import { rules } from "../lib/rules";
 import { cleanDomain } from "../lib/scrape";
+import { friendlyError } from "../lib/engine";
+import { validateRules } from "../lib/settings";
 import type { Company } from "../lib/types";
 
 const CORPUS = {
@@ -93,6 +95,27 @@ describe("pickContact", () => {
   });
   it("drops low confidence and nameless", () => {
     expect(pickContact([mk("CTO", 40), mk("CISO", 90, "")], rules, 100).contact).toBeNull();
+  });
+});
+
+describe("friendlyError", () => {
+  it("explains a missing Anthropic key", () => {
+    const e = new Error('Could not resolve authentication method. Expected one of apiKey, authToken to be set.');
+    expect(friendlyError(e)).toMatch(/ANTHROPIC_API_KEY/);
+  });
+  it("explains Hunter limit, Gmail login and unknown errors", () => {
+    expect(friendlyError(new Error("Hunter free tier cap (25/month) reached"))).toMatch(/25 lookups/);
+    expect(friendlyError(new Error("Invalid login: 535 Username and Password not accepted"))).toMatch(/App Password/);
+    expect(friendlyError(new Error("boom"))).toMatch(/Something unexpected happened: boom/);
+  });
+});
+
+describe("validateRules", () => {
+  it("accepts the defaults", () => expect(validateRules(rules)).toBeNull());
+  it("rejects bad numbers and bad patterns", () => {
+    expect(validateRules({ ...rules, fit_threshold: -1 })).toMatch(/threshold/i);
+    expect(validateRules({ ...rules, headcount_range: [500, 10] })).toMatch(/Headcount/);
+    expect(validateRules({ ...rules, persona_priority: [{ pattern: "(", score: 5 }] })).toMatch(/Invalid role pattern/);
   });
 });
 
