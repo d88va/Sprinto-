@@ -7,6 +7,14 @@ export const runtime = "nodejs";
 const MAX_DOMAINS = 25;
 
 export async function POST(req: Request) {
+  try {
+    return await create(req);
+  } catch {
+    return NextResponse.json({ error: "Can't reach the database right now. Check DATABASE_URL, then try again." }, { status: 503 });
+  }
+}
+
+async function create(req: Request) {
   const body = await req.json().catch(() => ({}));
   const raw: string[] = Array.isArray(body.domains) ? body.domains : [];
   if (!raw.length) return NextResponse.json({ error: "domains[] required" }, { status: 400 });

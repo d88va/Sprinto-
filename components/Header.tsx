@@ -16,7 +16,7 @@ export function Header() {
   const waiting = list.filter((p) => p.status === "awaiting_approval").length;
   const active = (href: string) => (href === "/" ? path === "/" || path.startsWith("/p/") : path.startsWith(href));
 
-  const missing = health && (!health.anthropic || !health.db);
+  const missing = health && (!health.ai || !health.db);
   let mode: { dot: string; text: string } | null = null;
   if (health) {
     if (missing) mode = { dot: "warn", text: "Setup needed: see the notice on the Outreach page" };

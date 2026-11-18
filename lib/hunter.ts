@@ -58,8 +58,13 @@ export async function findPoc(domain: string, headcount: number | null, rules: R
       reason: "manual override (Option B: Apollo lookup)",
     };
   const key = process.env.HUNTER_API_KEY;
-  if (!key) throw new Error("HUNTER_API_KEY not set and no poc_overrides entry");
-  await bumpUsage();
+  // No key or cap reached is not a failure: the Growth Lead can add the contact by hand (Option B).
+  if (!key) return { contact: null, reason: "Hunter.io isn't set up, so add the contact by hand below." };
+  try {
+    await bumpUsage();
+  } catch {
+    return { contact: null, reason: `The Hunter.io free plan limit (${MONTHLY_CAP} lookups a month) is used up, so add the contact by hand below.` };
+  }
   const url = new URL("https://api.hunter.io/v2/domain-search");
   url.search = new URLSearchParams({ domain, api_key: key, limit: "20", type: "personal" }).toString();
   const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });

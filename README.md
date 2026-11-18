@@ -68,7 +68,7 @@ Other outcomes: `not_fit`, `no_contact` (add one by hand), `held`, `skipped` (si
 
 1. **Neon.** Create a project; copy the **pooled** connection string (the host contains `-pooler`). Tables are created
    automatically on first use.
-2. **Anthropic.** Create an API key at https://console.anthropic.com.
+2. **AI.** Create a Gemini key at https://aistudio.google.com (free), or an Anthropic key at https://console.anthropic.com.
 3. **Hunter.io.** Free plan, 25 searches a month. Or skip it and add contacts by hand.
 4. **Gmail.** Turn on 2-step verification, then create an **App Password** (Google Account → Security → App passwords).
 5. **Environment variables.** Copy `.env.example` to `.env.local` for local runs; add the same in Vercel under
@@ -77,7 +77,8 @@ Other outcomes: `not_fit`, `no_contact` (add one by hand), `held`, `skipped` (si
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Neon pooled connection string |
-| `ANTHROPIC_API_KEY` | Reads sites, writes drafts (default model `claude-opus-5-5`, override with `SPRINTO_MODEL`) |
+| `GEMINI_API_KEY` | Reads sites, writes drafts. Free tier works (about 5 requests a minute, so a run is slower). Default `gemini-3.8-flash` with Flash fallbacks; override with `GEMINI_MODEL` |
+| `ANTHROPIC_API_KEY` | Alternative to Gemini (default `claude-opus-5-5`, override with `SPRINTO_MODEL`). Used first if both are set |
 | `HUNTER_API_KEY` | Contact lookup |
 | `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` | Sending |
 | `SEND_TO` | Your own inbox. Every email is delivered here, never to the prospect, as the brief requires |

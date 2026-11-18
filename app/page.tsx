@@ -43,7 +43,7 @@ export default function Home() {
   const todo: string[] = [];
   if (health) {
     if (!health.db) todo.push("Connect the database: add DATABASE_URL (your Neon connection string)");
-    if (!health.anthropic) todo.push("Add ANTHROPIC_API_KEY so the AI can read sites and write drafts");
+    if (!health.ai) todo.push("Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) so the AI can read sites and write drafts");
     if (!health.hunter) todo.push("Add HUNTER_API_KEY to find contacts automatically (or add contacts by hand when asked)");
     if (!health.dry_run && !health.gmail) todo.push("Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to send, or set DRY_RUN=1 to preview only");
     if (!health.send_to) todo.push("Add SEND_TO, the inbox that receives the emails (yours)");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { q } from "@/lib/db";
+import { aiProvider } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,8 @@ export async function GET() {
   const [name, domain] = to.split("@");
   return NextResponse.json({
     db,
-    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    ai: aiProvider() !== null,
+    ai_provider: aiProvider(),
     hunter: !!process.env.HUNTER_API_KEY,
     gmail: !!process.env.GMAIL_ADDRESS && !!process.env.GMAIL_APP_PASSWORD,
     send_to: to ? `${name.slice(0, 1)}***@${domain}` : null,

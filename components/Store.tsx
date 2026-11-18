@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { IN_PROGRESS, type Prospect } from "@/lib/ui";
 
 export type Health = {
-  db: boolean; anthropic: boolean; hunter: boolean; gmail: boolean; send_to: string | null; dry_run: boolean; protected: boolean;
+  db: boolean; ai: boolean; ai_provider: string | null; hunter: boolean; gmail: boolean; send_to: string | null; dry_run: boolean; protected: boolean;
 };
 
 type Ctx = {

@@ -13,9 +13,9 @@ export const STAGES = ["seed", "A", "B", "C", "D+", "public", "bootstrapped", "u
 // ---------- grounding (the Cut: nothing unsupported survives) ----------
 export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
-export function inCorpus(quote: string | null | undefined, corpus: Corpus): boolean {
+export function inCorpus(quote: string | null | undefined, corpus: Corpus, minLen = 12): boolean {
   const q = norm(quote ?? "");
-  return q.length >= 12 && Object.values(corpus).some((t) => norm(t).includes(q));
+  return q.length >= minLen && Object.values(corpus).some((t) => norm(t).includes(q));
 }
 
 export const renderCorpus = (corpus: Corpus) =>
@@ -39,7 +39,14 @@ JSON schema:
 Signal meanings: preparing_audit = says they are working toward/preparing for SOC 2/ISO/GDPR audit;
 enterprise_customers = names or targets enterprise/large customers; hiring_security_compliance = job post for security/compliance/GRC;
 requests_security_docs = asks buyers to request security docs / questionnaires; trust_or_security_page = has a security/trust page;
-has_gdpr_page / has_soc2 / has_iso27001 = states they already hold it.`;
+has_gdpr_page / has_soc2 / has_iso27001 = states they already hold it.
+
+Be strict. A signal needs explicit evidence, with a quote of at least a full sentence or phrase (a heading or a team name is not enough):
+- hiring_security_compliance: an actual open job posting for a security, compliance or GRC role.
+- enterprise_customers: names enterprise customers, or an explicit enterprise plan or enterprise sales offering.
+- preparing_audit: explicitly says they are working toward a certification or audit.
+- has_soc2 / has_iso27001 / has_gdpr_page: an explicit statement that they hold it.
+When unsure, leave the signal out.`;
 
 export function groundExtraction(raw: any, corpus: Corpus): Company {
   let stage = STAGES.includes(raw?.stage) ? raw.stage : "unknown";
@@ -49,7 +56,7 @@ export function groundExtraction(raw: any, corpus: Corpus): Company {
   const seen = new Set<string>();
   const signals: Signal[] = [];
   for (const s of raw?.signals ?? []) {
-    if (SIGNAL_TYPES.includes(s?.signal) && !seen.has(s.signal) && inCorpus(s.evidence, corpus)) {
+    if (SIGNAL_TYPES.includes(s?.signal) && !seen.has(s.signal) && inCorpus(s.evidence, corpus, 20)) {
       seen.add(s.signal);
       signals.push({ signal: s.signal, evidence: s.evidence, source_url: s.source_url ?? "" });
     }
@@ -143,6 +150,7 @@ Hard rules:
 - No statistics, customer names, or numbers other than these Sprinto facts:
 ${facts}
 - Under 110 words, plain text, one soft ask (a 15-minute chat), no hype, no attachments.
+- End with "Best," on one line and the sender name (${sender}) on the next.
 JSON: {"subject": str, "body": str, "hook_quote": str, "pain_addressed": str}`;
 }
 

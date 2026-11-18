@@ -103,6 +103,10 @@ describe("friendlyError", () => {
     const e = new Error('Could not resolve authentication method. Expected one of apiKey, authToken to be set.');
     expect(friendlyError(e)).toMatch(/ANTHROPIC_API_KEY/);
   });
+  it("explains Gemini overload and quota", () => {
+    expect(friendlyError(new Error("AI_BUSY: every Gemini model was too busy"))).toMatch(/overloaded/);
+    expect(friendlyError(new Error("AI_QUOTA: out"))).toMatch(/free quota/);
+  });
   it("explains Hunter limit, Gmail login and unknown errors", () => {
     expect(friendlyError(new Error("Hunter free tier cap (25/month) reached"))).toMatch(/25 lookups/);
     expect(friendlyError(new Error("Invalid login: 535 Username and Password not accepted"))).toMatch(/App Password/);

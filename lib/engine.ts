@@ -13,6 +13,10 @@ const MAX_DRAFT_ATTEMPTS = 3;
 /** Turn provider/network errors into something the Growth Lead can act on. */
 export function friendlyError(e: unknown): string {
   const m = `${(e as Error)?.name ?? ""}: ${(e as Error)?.message ?? e}`;
+  if (/NO_AI_KEY/.test(m)) return "No AI key is set. Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) in your settings, then try again.";
+  if (/API key not valid|API_KEY_INVALID|PERMISSION_DENIED|API key expired/i.test(m)) return "Google rejected the Gemini API key. Check GEMINI_API_KEY is correct and active.";
+  if (/AI_BUSY/.test(m)) return "Google's Gemini service is overloaded right now. This usually clears within a few minutes. Press Try again shortly.";
+  if (/AI_QUOTA|RESOURCE_EXHAUSTED|quota/i.test(m) && !/credit/i.test(m)) return "The Gemini free quota is used up for now. Wait a few minutes and press Try again, or use a paid key.";
   if (/authentication method|x-api-key|invalid api key|AuthenticationError|401/i.test(m) && /anthropic|apiKey|x-api-key|authentication/i.test(m))
     return "The Anthropic API key is missing or not accepted. Add a valid ANTHROPIC_API_KEY in your settings, then try again.";
   if (/credit balance|billing/i.test(m)) return "The Anthropic account is out of credit. Top it up, then try again.";
