@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Badge, MiniProgress } from "@/components/bits";
+import { Badge, MiniProgress, Mono } from "@/components/bits";
 import { useStore } from "@/components/Store";
 import { ago, displayName, FINISHED, IN_PROGRESS, STATUS, type Prospect } from "@/lib/ui";
 
@@ -51,17 +51,52 @@ export default function Home() {
 
   return (
     <>
-      <p className="kicker">Growth Lead workspace</p>
-      <h1>Cold outreach, researched and drafted for you.</h1>
-      <p className="lede">
-        Add company domains. We read each site, decide if they fit Sprinto, find the right person, and write one specific email.
-        You approve every send.
-      </p>
-      <div className="how">
-        <div><b>1 · You</b>Paste domains below</div>
-        <div><b>2 · We</b>Research and draft, about a minute each</div>
-        <div><b>3 · You</b>Review and approve each email</div>
+      <section className="hero">
+        <span className="eyebrow"><i />Growth Lead workspace</span>
+        <h1>Cold outreach, <em>researched</em> and drafted for you.</h1>
+        <p className="lede">
+          Add company domains. We read each site, decide if they fit Sprinto, find the right person, and write one specific email.
+          You approve every send.
+        </p>
+        <div className="flowline">
+          <span><b>1</b>You paste domains</span>
+          <span><b>2</b>We research and draft, about a minute each</span>
+          <span><b>3</b>You review and approve</span>
+        </div>
+      </section>
+
+      <div className="card composer">
+        <label className="field" htmlFor="domains" style={{ marginBottom: 0 }}>
+          <span id="add">Company domains</span>
+          <textarea
+            id="domains" value={text} onChange={(e) => setText(e.target.value)} rows={4}
+            placeholder={"acme.io\nexample.com\nhttps://www.another-saas.com"}
+          />
+          <small>One per line or separated by commas. Pasting full web addresses is fine.</small>
+        </label>
+        {domains.length > 0 && <div className="domain-pills">{domains.slice(0, 12).map((d) => <span key={d}>{d}</span>)}{domains.length > 12 && <span>+{domains.length - 12} more</span>}</div>}
+        {text === "" && (
+          <div className="try">Not sure where to start?
+            <button type="button" onClick={() => setText("vanta.com\ndrata.com\nsecureframe.com")}>Try three examples</button>
+          </div>
+        )}
+        <div className="actions">
+          <button className="btn btn-primary" onClick={run} disabled={busy || domains.length === 0 || domains.length > MAX}>
+            {busy ? "Starting…" : domains.length ? `Research ${domains.length} ${domains.length === 1 ? "company" : "companies"} →` : "Research companies"}
+          </button>
+          {domains.length > MAX && <span className="msg err" style={{ margin: 0 }}>Please add {MAX} or fewer at a time.</span>}
+          {error && <span className="msg err" style={{ margin: 0 }}>{error}</span>}
+        </div>
       </div>
+
+      {loaded && list.length > 0 && (
+        <div className="tiles">
+          <div className={`tile ${waiting.length ? "hot" : ""}`}><div className="n">{waiting.length}</div><div className="l">Waiting for your approval</div></div>
+          <div className="tile"><div className="n">{working.length}</div><div className="l">Being researched now</div></div>
+          <div className="tile"><div className="n">{list.filter((p) => ["sent", "drafted"].includes(p.status)).length}</div><div className="l">Emails approved</div></div>
+          <div className="tile"><div className="n">{list.length}</div><div className="l">Companies in total</div></div>
+        </div>
+      )}
 
       {todo.length > 0 && (
         <div className="banner" role="status">
@@ -70,26 +105,6 @@ export default function Home() {
           <ul>{todo.map((t) => <li key={t}>{t}</li>)}</ul>
         </div>
       )}
-
-      <section className="section" aria-labelledby="add">
-        <div className="card">
-          <label className="field" htmlFor="domains" style={{ marginBottom: 0 }}>
-            <span id="add">Company domains</span>
-            <textarea
-              id="domains" value={text} onChange={(e) => setText(e.target.value)} rows={4}
-              placeholder={"acme.io\nexample.com\nhttps://www.another-saas.com"}
-            />
-            <small>One per line or separated by commas. Pasting full web addresses is fine.</small>
-          </label>
-          <div className="actions">
-            <button className="btn btn-primary" onClick={run} disabled={busy || domains.length === 0 || domains.length > MAX}>
-              {busy ? "Starting…" : domains.length ? `Research ${domains.length} ${domains.length === 1 ? "company" : "companies"}` : "Research companies"}
-            </button>
-            {domains.length > MAX && <span className="msg err" style={{ margin: 0 }}>Please add {MAX} or fewer at a time.</span>}
-            {error && <span className="msg err" style={{ margin: 0 }}>{error}</span>}
-          </div>
-        </div>
-      </section>
 
       {waiting.length > 0 && (
         <section className="section" aria-labelledby="needs">
@@ -111,9 +126,12 @@ export default function Home() {
             {working.map((p) => (
               <Link key={p.id} href={`/p/${p.id}`} className="row">
                 <div className="row-main">
-                  <div className="row-title">{displayName(p)} <Badge status={p.status} /></div>
-                  <div className="row-sub">{STATUS[p.status]?.doing}</div>
-                  <MiniProgress status={p.status} />
+                  <Mono name={p.domain} />
+                  <div>
+                    <div className="row-title">{displayName(p)} <Badge status={p.status} /></div>
+                    <div className="row-sub">{STATUS[p.status]?.doing}</div>
+                    <MiniProgress status={p.status} />
+                  </div>
                 </div>
                 <span className="chev" aria-hidden>›</span>
               </Link>
@@ -144,8 +162,11 @@ export default function Home() {
             {shown.map((p) => (
               <Link key={p.id} href={`/p/${p.id}`} className="row">
                 <div className="row-main">
-                  <div className="row-title">{displayName(p)} <Badge status={p.status} /></div>
-                  <div className="row-sub">{p.why ?? ""}</div>
+                  <Mono name={p.domain} />
+                  <div>
+                    <div className="row-title">{displayName(p)} <Badge status={p.status} /></div>
+                    <div className="row-sub">{p.why ?? ""}</div>
+                  </div>
                 </div>
                 <span className="tiny muted" style={{ whiteSpace: "nowrap" }}>{ago(p.updated_at)}</span>
                 <span className="chev" aria-hidden>›</span>
@@ -161,6 +182,8 @@ export default function Home() {
 function AskCard({ p }: { p: Prospect }) {
   return (
     <Link href={`/p/${p.id}`} className="ask">
+      <Mono name={p.domain} />
+      <div className="ask-body">
       <div className="ask-top">
         <div>
           <div className="ask-co">{displayName(p)}</div>
@@ -174,6 +197,7 @@ function AskCard({ p }: { p: Prospect }) {
           <div className="ask-hook">Opens with: “{p.email.hook_quote}”</div>
         </>
       )}
+      </div>
     </Link>
   );
 }

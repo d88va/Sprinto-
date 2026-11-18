@@ -37,3 +37,17 @@ export function Stepper({ status }: { status: string }) {
     </ol>
   );
 }
+
+const HUES = ["#5b3fc7", "#0f766e", "#b45309", "#be185d", "#1d4ed8", "#15803d", "#7c3aed", "#c2410c"];
+
+/** Coloured letter tile standing in for a company logo (no external requests). */
+export function Mono({ name }: { name: string }) {
+  const clean = name.replace(/^https?:\/\//, "").replace(/^www\./, "");
+  let h = 0;
+  for (const c of clean) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return (
+    <span className="mono" aria-hidden style={{ background: `linear-gradient(135deg, ${HUES[h % HUES.length]}, ${HUES[(h + 3) % HUES.length]})` }}>
+      {(clean[0] ?? "?").toUpperCase()}
+    </span>
+  );
+}
