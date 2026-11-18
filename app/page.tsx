@@ -44,7 +44,6 @@ export default function Home() {
   if (health) {
     if (!health.db) todo.push("Connect the database: add DATABASE_URL (your Neon connection string)");
     if (!health.ai) todo.push("Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) so the AI can read sites and write drafts");
-    if (!health.hunter) todo.push("Add HUNTER_API_KEY to find contacts automatically (or add contacts by hand when asked)");
     if (!health.dry_run && !health.gmail) todo.push("Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to send, or set DRY_RUN=1 to preview only");
     if (!health.send_to) todo.push("Add SEND_TO, the inbox that receives the emails (yours)");
   }
@@ -104,6 +103,11 @@ export default function Home() {
           Add these in your Vercel project under Settings → Environment Variables, then redeploy:
           <ul>{todo.map((t) => <li key={t}>{t}</li>)}</ul>
         </div>
+      )}
+      {health && todo.length === 0 && !health.hunter && (
+        <p className="tiny muted" style={{ marginTop: 16 }}>
+          Contacts are added by hand for now. Add a Hunter.io key to find them automatically.
+        </p>
       )}
 
       {waiting.length > 0 && (
