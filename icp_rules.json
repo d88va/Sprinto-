@@ -1,0 +1,36 @@
+{
+  "_comment": "Growth Lead owns this file (check 09). Code reads it to set the verdict; the LLM never decides fit.",
+  "fit_threshold": 4,
+  "max_research_loops": 3,
+  "excluded_stages": ["public"],
+  "stage_points": { "A": 2, "B": 2, "C": 2, "seed": 1, "D+": 1, "bootstrapped": 0, "unknown": 0 },
+  "headcount_range": [30, 600],
+  "headcount_points": 1,
+  "signal_points": {
+    "preparing_audit": 3,
+    "enterprise_customers": 2,
+    "hiring_security_compliance": 2,
+    "requests_security_docs": 2,
+    "trust_or_security_page": 1,
+    "has_gdpr_page": 0,
+    "has_soc2": 0,
+    "has_iso27001": 0
+  },
+  "fully_certified_penalty": -3,
+  "fully_certified_requires": ["has_soc2", "has_iso27001"],
+
+  "persona_priority": [
+    { "pattern": "ciso|chief information security|head of security|security lead|compliance|grc|trust", "score": 100 },
+    { "pattern": "cto|chief technology|vp (of )?engineering|head of engineering|vp eng", "score": 80 },
+    { "pattern": "coo|chief operating|head of (operations|it)|it manager", "score": 60 },
+    { "pattern": "ceo|chief executive|founder|co-founder", "score": 40 }
+  ],
+  "small_company_headcount": 50,
+  "small_company_founder_score": 85,
+  "min_hunter_confidence": 70,
+
+  "sprinto_facts": [
+    "Sprinto automates SOC 2, ISO 27001 and GDPR compliance for SaaS companies.",
+    "Sprinto continuously monitors controls so audit prep is not a last-minute scramble."
+  ]
+}
