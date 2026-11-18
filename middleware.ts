@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // The API sends email and spends LLM/Hunter credits, so everything is behind basic auth.
-// Fails closed: no DASHBOARD_PASSWORD configured = nobody gets in.
+// Fails closed: no DASHBOARD_PASSWORD configured = nobody gets in, unless you deliberately set
+// PROTECTED_BY_VERCEL=1 to say Vercel Authentication (Deployment Protection) already guards the site.
 export function middleware(req: NextRequest) {
   const pass = process.env.DASHBOARD_PASSWORD;
-  if (!pass) return new NextResponse("DASHBOARD_PASSWORD is not configured", { status: 500 });
+  if (!pass) {
+    if (process.env.PROTECTED_BY_VERCEL === "1") return NextResponse.next();
+    return new NextResponse("Set DASHBOARD_PASSWORD, or PROTECTED_BY_VERCEL=1 with Vercel Authentication enabled", { status: 500 });
+  }
   const header = req.headers.get("authorization") ?? "";
   if (header.startsWith("Basic ")) {
     const decoded = atob(header.slice(6));

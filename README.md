@@ -42,7 +42,7 @@ Terminal outcomes: `not_fit`, `no_contact`, `held` (no draft passed the claim ch
 
 ## Safety
 
-- All routes sit behind `DASHBOARD_PASSWORD` basic auth; the app refuses everything if it's unset.
+- All routes sit behind `DASHBOARD_PASSWORD` basic auth, or behind Vercel Authentication if you set `PROTECTED_BY_VERCEL=1` (only after enabling it in Vercel > Settings > Deployment Protection). With neither set, the app refuses everything.
 - Recipient is hardcoded via `SEND_TO`. Secrets live only in env vars; `.env*` is gitignored.
 - Domains that look like IPs or `localhost` are rejected before any fetch.
 
