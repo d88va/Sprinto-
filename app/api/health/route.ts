@@ -21,7 +21,8 @@ export async function GET() {
     hunter: !!process.env.HUNTER_API_KEY,
     gmail: !!process.env.GMAIL_ADDRESS && !!process.env.GMAIL_APP_PASSWORD,
     send_to: to ? `${name.slice(0, 1)}***@${domain}` : null,
-    dry_run: process.env.DRY_RUN === "1",
+    // Preview mode when asked for, or automatically when Gmail isn't set up (nothing can be sent anyway).
+    dry_run: process.env.DRY_RUN === "1" || !(process.env.GMAIL_ADDRESS && process.env.GMAIL_APP_PASSWORD),
     protected: !!process.env.DASHBOARD_PASSWORD,
   });
 }

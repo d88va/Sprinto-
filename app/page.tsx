@@ -44,7 +44,6 @@ export default function Home() {
   if (health) {
     if (!health.db) todo.push("Connect the database: add DATABASE_URL (your Neon connection string)");
     if (!health.ai) todo.push("Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) so the AI can read sites and write drafts");
-    if (!health.dry_run && !health.gmail) todo.push("Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to send, or set DRY_RUN=1 to preview only");
     if (!health.send_to) todo.push("Add SEND_TO, the inbox that receives the emails (yours)");
   }
 
